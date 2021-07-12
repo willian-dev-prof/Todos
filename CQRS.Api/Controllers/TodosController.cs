@@ -15,6 +15,10 @@ using System.Globalization;
 using System.Linq;
 using System.Resources;
 using System.Threading.Tasks;
+using CQRS.Business.Handlers.Queries;
+using CQRS.Business.Handlers.Definition;
+using CQRS.Business.Handlers.QueryHandler;
+using CQRS.Business.Handlers.Views;
 
 namespace CQRS.Api.Controllers {
 
@@ -23,107 +27,68 @@ namespace CQRS.Api.Controllers {
     public class TodosController : ControllerBase {
 
         private readonly IMediator _mediator;
-        private readonly ControletodosContext _repository;
 
-        public TodosController(IMediator mediator , ControletodosContext repository) {
+        public TodosController(IMediator mediator ) {
             _mediator = mediator;
-            _repository = repository;
         }
 
         [HttpPost]
-        [Route("todos")]
+        [Route("")]
         public async Task<ActionResult> Create(
-                   [FromBody] CreateTodoRequest command) {
+                   [FromBody] CreateTodoLoad PayLoad) {
 
-            return Ok(await _mediator.Send(command));
+            return Ok(await _mediator.Send(new CreateTodoRequest(PayLoad.Title , PayLoad.Description , PayLoad.Complete)));
         }
 
-        [HttpPut]
+        [HttpPut("Completed/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [Route("todos")]
         public async Task<ActionResult> Updating(
-                   [FromBody] UpdateTodoRequest command) {
+                   [FromBody] UpdateTodoLoad PayLoad) {
 
-            Todo customer = _repository.Todo.FirstOrDefault(a => a.Id == command.Id);
-
-            return customer == null ? NotFound(StringResources.id_not_todo_in_database) 
-                                    : Ok(await _mediator.Send(command));
+            return Ok(await _mediator.Send(new UpdateTodoRequest(PayLoad.Id)));
         }
 
-        [HttpPut]
+        [HttpPut("description/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [Route("todos/description")]
         public async Task<ActionResult> UpdatingDesc(
-                   [FromBody] UpdateDescTodoRequest command) {
+                   [FromBody] UpdateDescTodoLoad PayLoad) {
 
-            Todo customer = _repository.Todo.FirstOrDefault(a => a.Id == command.Id);
-
-            return customer == null ? NotFound(StringResources.id_not_todo_in_database) 
-                                    : Ok(await _mediator.Send(command));
+            return Ok(await _mediator.Send(new UpdateDescTodoRequest(PayLoad.Id, PayLoad.Description)));
         }
 
-        [HttpDelete]
+        [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [Route("todos")]
         public async Task<ActionResult> Deleting(
-                   [FromBody] DeleteTodoRequest command) {
+                    DeleteTodoLoad PayLoad) {
 
-            Todo customer = _repository.Todo.FirstOrDefault(a => a.Id == command.Id);
-
-            return customer == null ? NotFound(StringResources.id_not_todo_in_database) 
-                                    : Ok(await _mediator.Send(command));
+            await _mediator.Send(new DeleteTodoRequest(PayLoad.Id));
+            return NoContent();
         }
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [Route("todos")]
-        public async Task<ActionResult<List<Todo>>> GetAllTodo() {
+        public async Task<ActionResult<PaginationTodoView<TodosResponse>>> Get([FromQuery] int? page, int? limit) =>
+             Ok(await _mediator.Send(new GetListTodoQuery(page.Value , limit.Value)));
 
-            var response = await _repository.Todo.OrderBy(todo => todo.Id).ToListAsync();
 
-            return response.Count == 0 ? NotFound(StringResources.no_todo_was_found_in_base)
-                                       : Ok(response);
+        [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<TodosResponse>> GetByIdTodo(int? id) {
+
+            return Ok(await _mediator.Send(new GetTodoByIdQuery(id.Value)));
         }
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [Route("todos/limit")]
-        public async Task<ActionResult<List<Todo>>> GetAllTodoLimit([Range(1, int.MaxValue)] int limite = 1 ,
-            [Range(1,int.MaxValue)]int page = 1) {
-
-            var response = await _repository.Todo.OrderBy(todo => todo.Id)
-                .Skip((page-1)*limite).Take(limite).ToListAsync();
-
-            return response.Count == 0 ? NotFound(StringResources.no_todo_was_found_in_base)
-                                       : Ok(response);
-        }
-
-        [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [Route("todos/id")]
-        public async Task<ActionResult<Todo>> GetByIdTodo([Range(1, int.MaxValue)] int id) {
-
-            Todo response = await _repository.Todo.FirstOrDefaultAsync(a => a.Id == id);
-
-            return response == null ? NotFound(StringResources.id_not_todo_in_database) 
-                                    : Ok(response);
-        }
-
-        [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [Route("todos/uncomplete")]
-        public async Task<ActionResult<List<Todo>>> GetTodoUncomplete() {
-            var response = await _repository.Todo.Where(a => a.Complete == false).ToListAsync();
-
-            return response.Count == 0 ? NotFound(StringResources.msg_error_uncomplete) 
-                                       : Ok(response);
+        [Route("uncomplete")]
+        public async Task<ActionResult<PaginationTodoView<TodosResponse>>> GetTodoUncomplete([FromQuery]  int? page , int? limit) {
+            return Ok(await _mediator.Send(new GetUncompleteTodoQuery(page.Value, limit.Value)));
         }
 
     }

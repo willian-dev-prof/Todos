@@ -3,6 +3,7 @@ using CQRS.Business.Commands.Responses;
 using CQRS.Business.Handlers.Concrete;
 using CQRS.Domain.Entities;
 using CQRS.Domain.Models.ValidationAtributes;
+using CQRS.Domain.Repository;
 using CQRS.Infra.Context;
 using ExpectedObjects;
 using System;
@@ -19,8 +20,7 @@ namespace CQRS.Testes {
         [InlineData(null)]
         public void TestExceptionTitleEmptyOrNull(string titleInvalido) {
 
-            Assert.Throws<ArgumentException>(() => new Todo(titleInvalido, true,
-                        DateTime.Now, "TesteDescrição"));
+            Assert.Throws<ArgumentException>(() => new Todo(titleInvalido , "TesteDescrição" , true));
         }
 
         [Theory]
@@ -28,17 +28,15 @@ namespace CQRS.Testes {
         [InlineData(null)]
         public void TestExceptionDescriptionEmptyOrNull(string descInvalido) {
 
-            Assert.Throws<ArgumentException>(() => new Todo("testando", false,
-                        DateTime.Now, descInvalido));
+            Assert.Throws<ArgumentException>(() => new Todo("testando", descInvalido ,false));
         }
 
         [Theory]
-        [InlineData(true , null)]
-        [InlineData(false , "01/06/2021")]
-        public void TestExceptionDateAndComplete(bool complete , string data) {
+        [InlineData(true)]
+        [InlineData(false)]
+        public void TestExceptionDateAndComplete(bool complete) {
 
-            Assert.Throws<ArgumentException>(() => new Todo("testando", complete,
-                        data == null ? null : Convert.ToDateTime(data), "testesData"));
+            Assert.Throws<ArgumentException>(() => new Todo("testando", "testesData", complete));
         }
 
         [Theory]
@@ -46,8 +44,7 @@ namespace CQRS.Testes {
         [InlineData("Jade")]
         public void TestExceptionTitleShortOrEmpty(string title) {
 
-            Assert.Throws<ArgumentException>(() => new Todo(title, true,
-                        DateTime.Now, "testesTitle"));
+            Assert.Throws<ArgumentException>(() => new Todo(title, "testesTitle", true ));
         }
 
         [Theory]
@@ -55,64 +52,15 @@ namespace CQRS.Testes {
         [InlineData("teste")]
         public void TestExceptionDescriptionShortOrEmpty(string Description) {
 
-            Assert.Throws<ArgumentException>(() => new Todo("testando", true,
-                        DateTime.Now, Description));
+            Assert.Throws<ArgumentException>(() => new Todo("testando", Description,true));
         }
 
         [Fact]
         public void TestExceptionAllNull() {
 
-            Assert.Throws<ArgumentException>(() => new Todo(null, false,
-                        null, null));
+            Assert.Throws<ArgumentException>(() => new Todo(null, null , false));
         }
 
-        [Fact]
-        public void TestUpdateDescHandlerException() {
-            var handlerUpdate = new UpdateDescTodoHandler(new ControletodosContext());
-            UpdateDescTodoRequest teste = new() {
-                Id = 0,
-                Description = ""
-            };
-
-            CancellationToken cancelation = new();
-            Assert.ThrowsAsync<ArgumentException>(() => handlerUpdate.Handle(teste, cancelation));
-        }
-
-        [Fact]
-        public void TestDeleteHandlerException() {
-            var handlerUpdate = new DeleteTodoHandler(new ControletodosContext());
-            DeleteTodoRequest teste = new() {
-                Id = 0
-            };
-
-            CancellationToken cancelation = new();
-            Assert.ThrowsAsync<ArgumentException>(() => handlerUpdate.Handle(teste, cancelation));
-        }
-
-        [Fact]
-        public void TestCreateHandlerException() {
-            var handlerUpdate = new CreateTodoHandler(new ControletodosContext());
-            CreateTodoRequest teste = new() {
-                Title = "",
-                Complete = false,
-                Description = ""
-            };
-
-            CancellationToken cancelation = new();
-            Assert.ThrowsAsync<ArgumentException>(() => handlerUpdate.Handle(teste, cancelation));
-        }
-
-        [Fact]
-        public void TestUpdateHandlerException() {
-            var handlerUpdate = new UpdateTodoHandler(new ControletodosContext());
-            UpdateTodoRequest teste = new() {
-                Id = 0,
-                Complete = false
-            };
-
-            CancellationToken cancelation = new();
-            Assert.ThrowsAsync<ArgumentException>(() => handlerUpdate.Handle(teste, cancelation));
-        }
 
         [Fact]
         public void TestValidationException() {
@@ -130,11 +78,7 @@ namespace CQRS.Testes {
                 Complete = false
             };
 
-            CreateTodoRequest teste = new() {
-                Title = CreateEsperado.Title,
-                Description = CreateEsperado.Description,
-                Complete = CreateEsperado.Complete
-            };
+            CreateTodoRequest teste = new(CreateEsperado.Title, CreateEsperado.Description, CreateEsperado.Complete);
 
             CreateEsperado.ToExpectedObject().ShouldMatch(teste);
 
@@ -149,11 +93,7 @@ namespace CQRS.Testes {
                 Complete = false
             };
 
-            UpdateTodoRequest teste = new() {
-                Id = 1,
-                Complete = false
-            };
-
+            UpdateTodoRequest teste = new(1);
             UpdateEsperado.ToExpectedObject().ShouldMatch(teste);
 
         }
@@ -167,10 +107,7 @@ namespace CQRS.Testes {
                 Description = "teste"
             };
 
-            UpdateDescTodoRequest teste = new() {
-                Id = 1,
-                Description = "teste"
-            };
+            UpdateDescTodoRequest teste = new(1, "teste");
 
             UpdateDescEsperado.ToExpectedObject().ShouldMatch(teste);
 
@@ -184,9 +121,7 @@ namespace CQRS.Testes {
                 Id = 1
             };
 
-            DeleteTodoRequest teste = new() {
-                Id = 1
-            };
+            DeleteTodoRequest teste = new(1);
 
             UpdateDeleteEsperado.ToExpectedObject().ShouldMatch(teste);
 
@@ -227,7 +162,7 @@ namespace CQRS.Testes {
                 Description = "testando"
             };
 
-            Todo teste = new(Todo.Title, Todo.Complete, Todo.DateComplete, Todo.Description);
+            Todo teste = new(Todo.Title, Todo.Description , Todo.Complete);
 
             Todo.ToExpectedObject().ShouldMatch(teste);
 

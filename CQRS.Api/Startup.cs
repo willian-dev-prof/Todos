@@ -21,6 +21,13 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using CQRS.Business.Handlers;
+using CQRS.Business.Handlers.QueryHandler;
+using CQRS.Domain.Repository;
+using CQRS.Infra.Repositories;
+using CQRS.Business.Handlers.Views;
+using CQRS.Business.Commands.Responses;
+using CQRS.Business.Handlers.Queries;
 
 namespace CQRS.Api {
     public class Startup {
@@ -34,7 +41,6 @@ namespace CQRS.Api {
         public void ConfigureServices(IServiceCollection services) {
 
             services.AddControllers();
-            services.AddMediatR(typeof(CreateTodoHandler).Assembly);
             services.AddDbContext<ControletodosContext>(options => options.UseSqlServer(Configuration.GetConnectionString("ConectionSql")));
             services.AddSwaggerGen(c => {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "CQRS.Api", Version = "v1" });
@@ -45,6 +51,11 @@ namespace CQRS.Api {
             var appSettings = appSettingsSection.Get<AppSettings>();
 
             services.AddSingleton(appSettings);
+
+            services.AddMediatR(typeof(TodoHandler).Assembly);
+            services.AddMediatR(typeof(TodoQueryHandlers).Assembly);
+            services.AddScoped<ITodoRepository, TodoRepository>();
+
 
         }
 

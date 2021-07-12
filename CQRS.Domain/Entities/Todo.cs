@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using CQRS.Domain.Exceptions;
 using CQRS.Domain.Models.ValidationAtributes;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,36 +14,61 @@ namespace CQRS.Domain.Entities
     /// <summary>
     /// Tabela do projeto inicial
     /// </summary>
-    public class Todo
-    {
+    public class Todo {
+        public const int MinLength = 6;
+        public const int MaxLength = 50;
+
         [Key]
-        public int Id { get; set; }
-        [StringLength(50)]
-        public string Title { get; set; }
-        public bool Complete { get; set; }
+        public int Id { get; private set; }
+        [StringLength(MaxLength)]
+        public string Title { get; private set; }
+        public bool Complete { get; private set; }
         [Column(TypeName = "datetime")]
-        public DateTime? DateComplete { get; set; }
-        [StringLength(50)]
-        public string Description { get; set; }
+        public DateTime? DateComplete { get; private set; }
+        [StringLength(MaxLength)]
+        public string Description { get; private set; }
 
-        public Todo( string title, bool complete, DateTime? dateComplete, string description) {
+        public Todo(string title, string description, bool complete = false) {
 
-            if (string.IsNullOrEmpty(title)) {
-                throw new ArgumentException("Title is Required");
-            }else if (string.IsNullOrEmpty(description)) {
-                throw new ArgumentException("Description is Required");
-            }else if ((complete && dateComplete == null) || (complete == false && dateComplete != null)) {
-                throw new ArgumentException("invalid arguments for approval/disapproval");
-            }else if (title.Length < 6) {
-                throw new ArgumentException("Title very Short");
-            }else if (description.Length < 6) {
-                throw new ArgumentException("Description very Short");
-            }
-                
+            IsValidTitle(title);
+            IsValidDescription(description);
+
             Title = title;
             Complete = complete;
-            DateComplete = dateComplete;
+            DateComplete = Complete ? DateTime.Now : null;
             Description = description;
         }
+
+        public static void IsValidTitle(string title) {
+            if (string.IsNullOrEmpty(title))
+                throw new DomainException(StringResources.this_field_is_required);
+            if (title.Length < MinLength)
+                throw new DomainException(StringResources.very_short_title);
+            if(title.Length > MaxLength)
+                throw new DomainException(StringResources.very_long_title);
+        }
+
+        public static void IsValidDescription(string description) {
+            if (string.IsNullOrEmpty(description))
+                throw new DomainException(StringResources.this_field_is_required);
+            if (description.Length < MinLength)
+                throw new DomainException(StringResources.very_short_description);
+            if(description.Length > MaxLength)
+                throw new DomainException(StringResources.very_long_descripition);
+        }
+
+        public Todo Completed() {
+            Complete = !Complete;
+            DateComplete = Complete ? DateTime.Now : null;
+            return this;
+        }
+
+        public Todo UpdateDescription(string description) {
+            IsValidDescription(description);
+            Description = description;
+            return this;
+        }
+
     }
+
 }
